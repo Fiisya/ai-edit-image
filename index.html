@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Editor</title>
+    <style>
+        /* ... Salin SEMUA CSS dari file HTML sebelumnya ke sini ... */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #2d3748 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.8s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-section.drag-over {
+            border-color: #764ba2;
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-section:hover .upload-icon {
+            transform: scale(1.1);
+        }
+
+        .upload-text {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .image-preview {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .prompt-section {
+            margin-bottom: 30px;
+        }
+
+        .prompt-label {
+            display: block;
+            color: white;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .prompt-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .result-image {
+            width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #c33;
+            display: none;
+        }
+
+        .success {
+            background: #efe;
+            color: #363;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #363;
+            display: none;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            position: relative;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .logo-icon::before {
+            content: '🤖';
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #4facfe;
+            transform: translateY(-2px);
+        }
+        
+        .bg-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.1));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .shape-1 {
+            width: 300px;
+            height: 300px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: 200px;
+            height: 200px;
+            top: 60%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .shape-3 {
+            width: 150px;
+            height: 150px;
+            bottom: 20%;
+            left: 30%;
+            animation-delay: 4s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-30px) rotate(120deg); }
+            66% { transform: translateY(15px) rotate(240deg); }
+        }
+
+        footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            font-size: 12px;
+            text-align: center;
+            color: #666;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .social-link {
+            text-decoration: none;
+            color: #ccc;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .social-link:hover {
+            color: #4da6ff;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; margin: 10px; }
+            .header h1 { font-size: 2rem; }
+            .upload-section { padding: 20px; }
+            .button-group { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 300px; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-elements">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+
+    <nav>
+        <div class="logo">
+            <div class="logo-icon"></div>
+            AlfiXD
+        </div>
+        <ul class="nav-links">
+            <li><a href="#fitur">Fitur</a></li>
+            <li><a href="#model">Model AI</a></li>
+            <li><a href="#tentang">Tentang</a></li>
+            <li><a href="#kontak">Kontak</a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 AI Image Editor</h1>
+            <p>Transform your images with the power of artificial intelligence</p>
+        </div>
+
+        <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Klik atau drag & drop gambar di sini</div>
+            <div class="upload-subtext">Mendukung JPG, PNG, WebP (max 10MB)</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <img id="imagePreview" class="image-preview" alt="Preview">
+        </div>
+
+        <div class="prompt-section">
+            <label class="prompt-label" for="promptInput">Prompt Edit:</label>
+            <textarea 
+                id="promptInput" 
+                class="prompt-input" 
+                placeholder="Contoh: make the background a beautiful sunset, add flowers around the person, change hair color to blonde, etc."
+            ></textarea>
+        </div>
+
+        <div class="button-group">
+            <button id="generateBtn" class="btn btn-primary">
+                Generate Image
+            </button>
+            <button id="clearBtn" class="btn btn-secondary">
+                Clear All
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Memproses gambar... Mohon tunggu</div>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+
+        <div class="result-section" id="resultSection">
+            <h3 style="margin-bottom: 20px; color: white;">Result:</h3>
+            <img id="resultImage" class="result-image" alt="Generated Result">
+            <div class="button-group" style="margin-top: 20px;">
+                <button id="downloadBtn" class="btn btn-primary">
+                    Download Image
+                </button>
+                <button id="editAgainBtn" class="btn btn-secondary">
+                    Edit Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <div class="footer-content">
+            <div class="copyright">© 2025 ALFIXD</div>
+            <div class="social-links">
+                <a href="https://github.com/Fiisya" target="_blank" class="social-link">
+                    <i class="fab fa-github"></i>
+                    <span>GitHub</span>
+                </a>
+                <a href="https://whatsapp.com/channel/0029Vb4fjWE1yT25R7epR110" target="_blank" class="social-link">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp Channel</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.querySelector('.upload-section');
+        const previewSection = document.getElementById('previewSection');
+        const imagePreview = document.getElementById('imagePreview');
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const loading = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const resultSection = document.getElementById('resultSection');
+        const resultImage = document.getElementById('resultImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const editAgainBtn = document.getElementById('editAgainBtn');
+
+        let selectedFile = null;
+        let resultBlob = null;
+
+        // Show error message
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            successDiv.style.display = 'none';
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            setTimeout(() => { successDiv.style.display = 'none'; }, 3000);
+        }
+
+        // File input change event
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) { handleFileSelect(file); }
+        });
+
+        // Drag and drop events
+        uploadSection.addEventListener('dragover', (e) => { e.preventDefault(); uploadSection.classList.add('drag-over'); });
+        uploadSection.addEventListener('dragleave', (e) => { e.preventDefault(); uploadSection.classList.remove('drag-over'); });
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) { handleFileSelect(files[0]); }
+        });
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) { showError('File harus berupa gambar!'); return; }
+            if (file.size > 10 * 1024 * 1024) { showError('Ukuran file tidak boleh lebih dari 10MB!'); return; }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => { imagePreview.src = e.target.result; previewSection.style.display = 'block'; };
+            reader.readAsDataURL(file);
+            showSuccess('Gambar berhasil dipilih!');
+        }
+
+        // Generate button click event
+        generateBtn.addEventListener('click', async function() {
+            if (!selectedFile) { showError('Pilih gambar terlebih dahulu!'); return; }
+            if (!promptInput.value.trim()) { showError('Masukkan prompt edit terlebih dahulu!'); return; }
+
+            generateBtn.disabled = true;
+            loading.style.display = 'block';
+            resultSection.style.display = 'none';
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('prompt', promptInput.value.trim());
+
+                // PERUBAHAN PENTING: fetch ke endpoint Vercel API
+                const response = await fetch('/api/edit', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server mengalami kesalahan.');
+                }
+
+                resultBlob = await response.blob();
+                const imageUrl = URL.createObjectURL(resultBlob);
+                resultImage.src = imageUrl;
+                resultSection.style.display = 'block';
+                showSuccess('Gambar berhasil diedit!');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Gagal memproses gambar: ' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        // Download button click event
+        downloadBtn.addEventListener('click', function() {
+            if (!resultBlob) return;
+            const url = URL.createObjectURL(resultBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-edited-${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showSuccess('Gambar berhasil didownload!');
+        });
+
+        // Edit again button click event
+        editAgainBtn.addEventListener('click', () => { resultSection.style.display = 'none'; promptInput.focus(); });
+
+        // Clear button click event
+        clearBtn.addEventListener('click', () => {
+            selectedFile = null; resultBlob = null; fileInput.value = ''; promptInput.value = '';
+            previewSection.style.display = 'none'; resultSection.style.display = 'none';
+            errorDiv.style.display = 'none'; successDiv.style.display = 'none';
+            showSuccess('Semua data berhasil dihapus!');
+        });
+
+        // Sample prompts
+        const samplePrompts = ["make the background a beautiful sunset", "add flowers around the person", "change hair color to blonde", "add sunglasses", "make it look like anime style"];
+        promptInput.addEventListener('focus', function() {
+            if (!this.value) { this.placeholder = samplePrompts[Math.floor(Math.random() * samplePrompts.length)]; }
+        });
+    </script>
+</body>
+</html>
